@@ -58,25 +58,20 @@ Sources at the bottom of this file.
 
 Both pitfalls are documented in `~/.claude/projects/.../memory/vscode_native_modules.md` so future-me doesn't re-learn them.
 
-## Project layout (planned)
+## Project layout
 
 ```
 tapeworm/
-├── package.json          # manifest: commands, settings schema, activation
-├── esbuild.js            # serialport marked external
-├── src/
-│   ├── extension.ts      # activate / deactivate
-│   ├── serial/
-│   │   ├── port.ts       # SerialPort wrapper
-│   │   └── profiles.ts   # built-in machine profiles
-│   ├── commands/
-│   │   ├── send.ts
-│   │   ├── receive.ts
-│   │   └── listPorts.ts
-│   └── ui/
-│       ├── statusBar.ts
-│       └── output.ts
-└── test/
+├── README.md             # this file
+├── PLATFORM.md           # internal architecture sketch (open-core, Hub integration)
+├── TODO.md               # build plan, phased
+├── CONTRIBUTING.md       # how to contribute, licensing intent, CLA
+├── core/                 # tapeworm-core — Rust serial logic crate
+├── mcp-server/           # tapeworm-mcp — MCP server for AI clients
+└── (planned, Phase 1+)
+    ├── package.json      # extension manifest
+    ├── esbuild.js
+    └── src/              # extension code (extension.ts, commands/, ui/, serial/)
 ```
 
 ## Configuration (planned)

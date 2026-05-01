@@ -1,0 +1,14 @@
+[package]
+name = "tapeworm-core"
+version = "0.0.1"
+description = "Cross-platform CNC RS-232 transfer logic — the wire layer behind the Tapeworm extension, MCP server, and (eventually) Tauri desktop app"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+serialport.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
