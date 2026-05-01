@@ -78,6 +78,16 @@ Don't blindly copy versions from this file. Run these before `npm install`:
 - [ ] `vsce package` → install the .vsix locally on a fresh VS Code → smoke test
 - [ ] Marketplace publish (`vsce publish`) — needs a publisher account + PAT
 
+## Phase 8.5 — Autodesk Post Processor cooperation (ship with v1)
+
+The Autodesk Post Processor Utility extension (`Autodesk.hsm-post-processor`) is the single most-installed Autodesk-published VS Code extension in this niche. Anyone who already has it is our exact user. This is cheap to build and immediately useful — pull it forward into v1.
+
+- [ ] Detect installation via `vscode.extensions.getExtension("Autodesk.hsm-post-processor")`.
+- [ ] Watch for NC output produced by their post-runner (configurable output path; usually a workspace-relative directory).
+- [ ] Register a CodeLens / context-menu item on `.nc`/`.cnc` files: `Tapeworm: Send to Machine`.
+- [ ] Activation event fires only when the file matches the user's NC glob — don't pollute every workspace.
+- [ ] Don't fork or replace anything they ship. We sit downstream of their utility.
+
 ## Phase 9 — Differentiation (post v1)
 
 The wire protocol isn't where this product wins. The seam between Fusion → VS Code/Git → machine is. Land these only after Phases 1–8 are stable; treat them as v1.5.

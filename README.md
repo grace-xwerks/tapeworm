@@ -111,6 +111,12 @@ npm run watch       # auto-rebuild
 npm run package     # builds the .vsix
 ```
 
+## Notes & caveats
+
+- **Native module.** `serialport` ships a native binding. We mark it `external` to esbuild and bundle it unmodified inside the `.vsix`. If you see a `NODE_MODULE_VERSION` mismatch on activation, your VS Code's Electron Node ABI doesn't match the prebuilt — rebuild the bindings against your installed VS Code. (`serialport` 12+ ships Electron prebuilds, so this is rare in practice.)
+- **APS subscription required for Hub features.** The Phase 10 Autodesk integrations (Manufacturing Data Model GraphQL, Fusion Automation API, etc.) hit Autodesk Platform Services. As of May 2026, APS introduced paid tiers for several APIs; included usage now ships with qualifying Autodesk subscriptions, and a free tier remains for experimentation. The core RS-232 transfer (Phases 1–8) does **not** depend on APS — Tapeworm works fully offline against a serial cable. Hub sync is opt-in.
+- **The shop floor is not the programming desk.** Often the PC with the serial cable isn't the same one a programmer edits on. We support both: full extension on the programming desk; a smaller CLI / companion mode for the floor.
+
 ## References
 
 **RS-232 / serial:**
