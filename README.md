@@ -6,6 +6,8 @@ A VS Code extension for moving CNC programs between your editor and a machine to
 
 The name is a nod to the paper-tape ancestry of all this — same protocol, fewer moving parts.
 
+Beyond the wire, Tapeworm is designed to close the loop between **Autodesk Fusion → Git → the machine → back to Fusion Team**. Pull NC programs from a Fusion Hub via the Manufacturing Data Model GraphQL API, send them to the control over RS-232, capture what comes back, and push the diff to the Hub with full provenance. A companion MCP server lets Claude, Copilot, or any MCP-aware client drive the whole flow in natural language. See [TODO.md](TODO.md) Phases 9–11.
+
 ## Status
 
 Pre-implementation. This repo is currently planning docs only. See [TODO.md](TODO.md) for the build plan.
@@ -111,10 +113,20 @@ npm run package     # builds the .vsix
 
 ## References
 
+**RS-232 / serial:**
 - [serialport on npm](https://www.npmjs.com/package/serialport) · [serialport.io docs](https://serialport.io/)
-- [VS Code Extension API](https://code.visualstudio.com/api) · [Bundling Extensions](https://code.visualstudio.com/api/working-with-extensions/bundling-extension) · [Manifest reference](https://code.visualstudio.com/api/references/extension-manifest)
 - [machinetoolhelp: per-control RS-232 settings](https://www.machinetoolhelp.com/Applications/RS232Communications.html)
 - [Fanuc 0i configuration (factorywiz KB)](https://kb.factorywiz.com/portal/en/kb/articles/fanuc-0i-configuration-document)
+
+**VS Code extensions:**
+- [VS Code Extension API](https://code.visualstudio.com/api) · [Bundling Extensions](https://code.visualstudio.com/api/working-with-extensions/bundling-extension) · [Manifest reference](https://code.visualstudio.com/api/references/extension-manifest)
+
+**Autodesk Platform Services (Phase 10 territory):**
+- [Fusion Automation API](https://aps.autodesk.com/apis-and-services/fusion-automation-api) — GA, ~7000 endpoints, hub I/O, NC programs, manufacturing setups
+- [Manufacturing Data Model API (GraphQL)](https://aps.autodesk.com/manufacturing-data-model-api) · [About GraphQL](https://aps.autodesk.com/en/docs/mfgdataapi/v1/developers_guide/about-graphql)
+- [APS MCP server (Node.js, official)](https://github.com/autodesk-platform-services/aps-mcp-server-nodejs) · [DevCon 2026 MCP workshop](https://autodesk-platform-services.github.io/mcp-devcon2026/)
+- [Bringing Fusion onto Claude (APS blog)](https://aps.autodesk.com/blog/bringing-fusion-claude-creative-work)
+- [Autodesk Fusion Post Processor Utility (VS Code)](https://marketplace.visualstudio.com/items?itemName=Autodesk.hsm-post-processor) · [source](https://github.com/Autodesk/cam-posteditor)
 
 ## License
 
