@@ -10,7 +10,9 @@ Beyond the wire, Tapeworm is designed to close the loop between **Autodesk Fusio
 
 ## Status
 
-Pre-implementation. This repo is currently planning docs only. See [TODO.md](TODO.md) for the build plan.
+_Last updated 2026-05-01._
+
+> ⚠️ **Pre-implementation.** This repo currently contains planning docs only — no extension scaffolding, no compiled artifact, nothing to install. All "What it'll do" / "Configuration" / "Commands" sections below are spec, not behavior. See [TODO.md](TODO.md) for the build plan and Phase 1 entry point.
 
 ## What it'll do
 
