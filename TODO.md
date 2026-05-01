@@ -137,6 +137,20 @@ This is the credibility play. Goal: be the obvious answer when an Autodesk insid
 - [ ] Submit a session pitch to next Autodesk DevCon if the timing lines up.
 - [ ] Open-source the MCP server even if the main extension stays closed; MCP servers travel further than VS Code extensions.
 
+## Phase 12 — Platform (speculative, post-v2)
+
+Architecture sketch lives in [PLATFORM.md](PLATFORM.md). This phase is intentionally vague until v1 has real users — don't build ahead of demand. Captured here so we don't forget the shape.
+
+- [ ] Extract `tapeworm-core` to a Rust crate (serial logic + framing + flow control). Re-export to Node via `napi-rs`. Sets up Tauri.
+- [ ] Stand up minimal **GraphQL gateway** (Apollo Federation v2) composing APS subgraphs + a `fleet` subgraph + an `ai` subgraph. Closed source.
+- [ ] Build the **AI subgraph** with a single tool first: settings discovery ("Mitsubishi M70 garbage at 9600/8N1" → walk troubleshoot tree → propose fix).
+- [ ] **Tauri desktop app** for shop-floor PCs. Reuses `tapeworm-core` natively. Talks GraphQL to the gateway.
+- [ ] Web app at **tapeworm.dev** — marketing + Hub explorer + profile registry browser. Next.js + Apollo.
+- [ ] **`tapeworm-profiles`** community registry repo — JSON/YAML schemas for machine controls. Pull-request workflow for new profiles.
+- [ ] Dual-license preparation: Apache-2.0 + CLA on all open packages. `cla-assistant` or similar.
+- [ ] Brand split: "Tapeworm" stays the wire-protocol component; pick a parent platform brand. Defer until v1 traction is real.
+- [ ] Anonymized telemetry pipeline (opt-in) feeding the AI training corpus — handshakes, profile variations, post-processor diffs. Strict consent flow.
+
 ## Open questions
 
 - [ ] Do we need a webview for live transmission monitoring, or is the OutputChannel enough? (Start with OutputChannel.)
