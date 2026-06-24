@@ -472,7 +472,7 @@ export default function App() {
           <div className="logo-container">
             <span className="logo-icon">⬡</span>
             <span className="logo-text">tapeworm</span>
-            <span className="logo-tag">NC-Base v0.0.1</span>
+            <span className="logo-tag">Code-Base v0.0.1</span>
           </div>
 
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>

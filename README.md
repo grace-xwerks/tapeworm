@@ -1,4 +1,4 @@
-# Tapeworm — CNC NC-Base Platform
+# Tapeworm — CNC Code-Base Platform
 
 > A modern, Supabase-backed G-code library, dynamic O-number rewriter, and real-time serial transfer platform for CNC machine shops.
 
@@ -27,7 +27,7 @@ tapeworm/
 
 ## Technical Features
 
-### 1. Database-Native CNC Management (NC-Base)
+### 1. Database-Native CNC Management (Code-Base)
 Tapeworm uses a relational PostgreSQL schema (managed locally via Supabase) to keep track of:
 - **Machines**: Location, control families (Fanuc, Mitsubishi, Haas, Brother), transfer modes (RS-232, Net Share, USB gadget), and connection profiles.
 - **Programs & Revisions**: Fully versioned program history. Tracks approvals (`Draft` ➔ `Approved` ➔ `In Production`), file sizes, SHA-256 hashes, and tool list documents.
