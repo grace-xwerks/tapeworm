@@ -90,6 +90,17 @@ If you are developing without physical serial hardware (Moxa NPort servers) or a
 - **Mock Ingestion**: Click **Ingest Program** and paste sample G-code containing channel delimiters (`$1`, `$2`) or subroutine calls. The UI will instantly display the auto-parsed CNC metadata.
 - **Simulated Queue**: Click **Send** to queue a transfer. The right-hand panel will display the O-number substitution maps and animate the status transition (`queued` ➔ `sending` ➔ `complete`) with real-time logs.
 
+### Application Screenshots
+
+#### 1. Unified Cockpit Dashboard
+![Unified Cockpit Dashboard](screenshots/dashboard.png)
+
+#### 2. Auto-parsing Ingest Modal
+![Auto-parsing Ingest Modal](screenshots/ingest_modal.png)
+
+#### 3. Real-time Transfer queue with Dynamic O-number mappings
+![Real-time Transfer Queue](screenshots/active_transfer.png)
+
 ---
 
 ## Contributing
