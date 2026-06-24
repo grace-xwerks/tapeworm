@@ -26,3 +26,7 @@ Thumbs.db
 # Rust
 target/
 Cargo.lock
+
+# Tapeworm specific
+tapeworm.zip
+.turbo/

@@ -1,0 +1,65 @@
+version: '3.8'
+
+# Tapeworm application services.
+# Supabase is managed separately via `supabase start` (dev) or
+# the official self-hosted compose at supabase/docker/docker-compose.yml (prod).
+# Both approaches expose Supabase on the tapeworm_floor network below.
+
+networks:
+  tapeworm_floor:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16   # internal Docker network — not the shop floor LAN
+
+volumes:
+  tapeworm_web_build:
+
+services:
+
+  # ── Transfer agent ─────────────────────────────────────────────────────────
+  agent:
+    build:
+      context: ./apps/agent
+      dockerfile: Dockerfile
+    container_name: tapeworm-agent
+    restart: unless-stopped
+    network_mode: host          # must reach Moxa NPort units on shop floor LAN directly
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      MOXA_LATHE_HOST: ${MOXA_LATHE_HOST}
+      MOXA_LATHE_BASE_PORT: ${MOXA_LATHE_BASE_PORT}
+      MOXA_MILL_HOST: ${MOXA_MILL_HOST}
+      MOXA_MILL_BASE_PORT: ${MOXA_MILL_BASE_PORT}
+      PI_ZERO_1_HOST: ${PI_ZERO_1_HOST}
+      PI_ZERO_2_HOST: ${PI_ZERO_2_HOST}
+      AGENT_LOG_LEVEL: ${AGENT_LOG_LEVEL:-info}
+    volumes:
+      - /etc/tapeworm:/etc/tapeworm:ro   # machine profiles, if file-based config needed
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── Web app (served by nginx) ───────────────────────────────────────────────
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    container_name: tapeworm-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - tapeworm_floor
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

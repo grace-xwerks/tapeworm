@@ -1,0 +1,120 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070B14; color: #E2E8F0; font-family: var(--font-sans); }
+  .card { background: #070B14; padding: 1.25rem 1.5rem; }
+  .header { display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid #F59E0B33; padding-bottom: .75rem; margin-bottom: 1rem; }
+  .logo { font-size: 20px; font-weight: 500; color: #F59E0B; letter-spacing: -0.5px; }
+  .subtitle { font-size: 12px; color: #64748B; font-family: var(--font-mono); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .section { background: #0F1624; border: 0.5px solid #1E293B; border-radius: 8px; padding: .85rem 1rem; }
+  .section.full { grid-column: 1 / -1; }
+  .section.warn { border-left: 2px solid #F59E0B; }
+  .section.good { border-left: 2px solid #10B981; }
+  .section.info { border-left: 2px solid #3B82F6; }
+  .sec-title { font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #F59E0B; margin-bottom: .6rem; }
+  .item { display: flex; gap: 8px; align-items: flex-start; margin-bottom: .35rem; font-size: 13px; line-height: 1.5; color: #CBD5E1; }
+  .item:last-child { margin-bottom: 0; }
+  .dot { color: #F59E0B; flex-shrink: 0; margin-top: 1px; }
+  .dot.green { color: #10B981; }
+  .dot.blue { color: #3B82F6; }
+  .dot.red { color: #EF4444; }
+  code { font-family: var(--font-mono); font-size: 11px; background: #1E293B; color: #93C5FD; padding: 1px 5px; border-radius: 3px; }
+  .pill { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 10px; display: inline-block; margin-left: 4px; vertical-align: middle; }
+  .pill.amber { background: #F59E0B22; color: #F59E0B; }
+  .pill.green { background: #10B98122; color: #10B981; }
+  .pill.red { background: #EF444422; color: #EF4444; }
+  .divider { border: none; border-top: 0.5px solid #1E293B; margin: .5rem 0; }
+  .mono { font-family: var(--font-mono); font-size: 11px; color: #93C5FD; }
+  .answer { font-size: 12px; color: #10B981; margin-top: 2px; margin-left: 14px; font-style: italic; }
+</style>
+
+<div class="card">
+  <div class="header">
+    <span class="logo">⬡ tapeworm</span>
+    <span class="subtitle">meeting reference · grace engineering · CNC program management</span>
+  </div>
+
+  <div class="grid">
+
+    <div class="section good">
+      <div class="sec-title">storage naming schema</div>
+      <div class="item"><span class="dot green">▸</span><span>Server filename = <code>customer-partnumber.cnc</code></span></div>
+      <div class="item"><span class="dot green">▸</span><span>Swiss lathes are monolithic — one program per part, no op number needed</span></div>
+      <div class="item"><span class="dot green">▸</span><span>Mills with multiple setups: <code>customer-part-op10.cnc</code></span></div>
+      <div class="item"><span class="dot green">▸</span><span>Revision lives in the DB, never in the filename</span></div>
+      <div class="item"><span class="dot amber">▸</span><span>Use folder hierarchy not hyphens if customer names contain hyphens</span></div>
+    </div>
+
+    <div class="section info">
+      <div class="sec-title">O-number injection</div>
+      <div class="item"><span class="dot blue">▸</span><span>O-numbers are meaningless — system assigns per-machine</span></div>
+      <div class="item"><span class="dot blue">▸</span><span><code>machine_program_assignments(machine_id, program_id, o_number)</code> — assigned once, permanent</span></div>
+      <div class="item"><span class="dot blue">▸</span><span>Citizens: one O-number per file, top line only — injection is a single line swap</span></div>
+      <div class="item"><span class="dot blue">▸</span><span>Mills: O-number + any <code>M98 P____</code> call sites must all be rewritten atomically</span></div>
+    </div>
+
+    <div class="section full good">
+      <div class="sec-title">citizen file structure — confirmed from actual programs</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+        <div>
+          <div style="font-size:11px; color:#64748B; margin-bottom:4px;">channels</div>
+          <div class="item"><span class="dot green">▸</span><span><code>$1</code> main spindle, <code>$2</code> subspindle, <code>$0</code> barfeed params — single file</span></div>
+          <div class="item"><span class="dot green">▸</span><span>NOT separate files per channel</span></div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748B; margin-bottom:4px;">subroutine calls</div>
+          <div class="item"><span class="dot green">▸</span><span><code>M98 H1</code> / <code>M98 H100</code> = internal N-label calls, stay inside the file</span></div>
+          <div class="item"><span class="dot amber">▸</span><span><code>/M98 P8000</code> = machine-resident utility, never send, flag as known</span></div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#64748B; margin-bottom:4px;">$0 block</div>
+          <div class="item"><span class="dot amber">▸</span><span>Barfeed axis params are machine-specific — decision: strip on ingest or validate on send</span></div>
+          <div class="item"><span class="dot green">▸</span><span><code>!L___</code> labels = channel sync points, not subprogram calls — ignore in parser</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section warn">
+      <div class="sec-title">pushback — have answers ready</div>
+      <div class="item"><span class="dot amber">▸</span><span><strong style="color:#F59E0B">Subprogram rewriting</strong> — mills M98/G65 call sites must all update, not just the header</span></div>
+      <div class="answer">→ stored as dependency graph, full bundle rewrite at transfer time</div>
+      <div class="item" style="margin-top:.4rem"><span class="dot amber">▸</span><span><strong style="color:#F59E0B">Receive-back mapping</strong> — program returns from machine with injected O-number, not filename</span></div>
+      <div class="answer">→ transfer record stores the substitution map, reverse lookup is deterministic</div>
+      <div class="item" style="margin-top:.4rem"><span class="dot amber">▸</span><span><strong style="color:#F59E0B">Operation number source</strong> — typed = drift, Plex routing = authoritative</span></div>
+      <div class="answer">→ pull from Plex work order routing via existing MCP integration</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-title">hardware plan</div>
+      <div class="item"><span class="dot blue">▸</span><span>Lathe area: <code>Moxa NPort 5610-16</code> — 1U, 16 ports, ~$150-250 used</span></div>
+      <div class="item"><span class="dot blue">▸</span><span>Mill area: <code>Moxa NPort 5650-8</code> for RS-232 Sigma 1 machines</span></div>
+      <div class="item"><span class="dot green">▸</span><span>Sigma 5 mills: check for Ethernet card — may already be networkable</span></div>
+      <div class="item"><span class="dot green">▸</span><span>Brothers 879/880: Ethernet native, ready today</span></div>
+      <div class="item"><span class="dot green">▸</span><span>Total hardware est: <strong style="color:#E2E8F0">$300–400</strong> if patient on eBay</span></div>
+    </div>
+
+    <div class="section full info">
+      <div class="sec-title">software phases</div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+        <div style="background:#070B14; border-radius:6px; padding:.6rem .75rem;">
+          <div style="font-size:11px; color:#3B82F6; font-weight:500; margin-bottom:4px;">Phase 1</div>
+          <div style="font-size:12px; color:#CBD5E1;">Program library web app. Versioned DB, metadata, approval states. No hardware yet.</div>
+        </div>
+        <div style="background:#070B14; border-radius:6px; padding:.6rem .75rem;">
+          <div style="font-size:11px; color:#3B82F6; font-weight:500; margin-bottom:4px;">Phase 2</div>
+          <div style="font-size:12px; color:#CBD5E1;">Wire Moxa units. Transfer agent. Per-machine profiles. O-number injection + bundle send.</div>
+        </div>
+        <div style="background:#070B14; border-radius:6px; padding:.6rem .75rem;">
+          <div style="font-size:11px; color:#3B82F6; font-weight:500; margin-bottom:4px;">Phase 3</div>
+          <div style="font-size:12px; color:#CBD5E1;">Plex integration. Work order → program auto-surface. Operator tablet UI per machine cluster.</div>
+        </div>
+        <div style="background:#070B14; border-radius:6px; padding:.6rem .75rem;">
+          <div style="font-size:11px; color:#F59E0B; font-weight:500; margin-bottom:4px;">VS Code ext</div>
+          <div style="font-size:12px; color:#CBD5E1;">Tapeworm extension. Sidebar tree, command palette send, Fusion post hook, MCP server companion.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

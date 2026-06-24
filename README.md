@@ -1,136 +1,99 @@
-# Tapeworm
+# Tapeworm — CNC NC-Base Platform
 
-> Stream G-code from VS Code to your CNC over RS-232. Drip feed, send, receive — Haas, Fanuc, Mazak, Mitsubishi.
+> A modern, Supabase-backed G-code library, dynamic O-number rewriter, and real-time serial transfer platform for CNC machine shops.
 
-A VS Code extension for moving CNC programs between your editor and a machine tool control over a serial port. Edit G-code in VS Code, hit a command, and it goes out the wire with the right baud, parity, stop bits, and handshake. Programs come back the same way and land in a fresh editor tab.
+Tapeworm closes the loop between **Autodesk Fusion → Git ➔ Supabase Database ➔ The Machine Tool Control**. It provides a central, versioned repository of proven programs, manages per-machine O-number namespaces, resolves subprogram dependencies, and streams G-code over RS-232, Ethernet, or USB gadget interfaces.
 
-The name is a nod to the paper-tape ancestry of all this — same protocol, fewer moving parts.
+---
 
-Beyond the wire, Tapeworm is designed to close the loop between **Autodesk Fusion → Git → the machine → back to Fusion Team**. Pull NC programs from a Fusion Hub via the Manufacturing Data Model GraphQL API, send them to the control over RS-232, capture what comes back, and push the diff to the Hub with full provenance. A companion MCP server lets Claude, Copilot, or any MCP-aware client drive the whole flow in natural language. See [TODO.md](TODO.md) Phases 9–11.
+## Workspace Architecture
 
-## Status
-
-_Last updated 2026-05-01._
-
-> ⚠️ **Pre-implementation.** This repo currently contains planning docs only — no extension scaffolding, no compiled artifact, nothing to install. All "What it'll do" / "Configuration" / "Commands" sections below are spec, not behavior. See [TODO.md](TODO.md) for the build plan and Phase 1 entry point.
-
-## What it'll do
-
-- **Send active file** — push the file you're editing out to the configured COM port.
-- **Receive into a new tab** — listen on the port and capture an incoming program.
-- **Drip feed** — for programs too big for the control's memory, stream paced by XON/XOFF or RTS/CTS.
-- **Per-machine profiles** — pick `Haas-VF2` or `Fanuc-0i` and skip the bit-twiddling.
-- **Status bar + log channel** — see the port, baud, and bytes flowing; transmission log for when something looks wrong.
-- **Framing knobs** — leading/trailing `%`, null padding, EOL choice. The old controls are picky.
-
-## RS-232 settings, briefly
-
-The settings on **both ends must match exactly** — mismatched parity is silent garbage, mismatched stop bits is a hang. Tapeworm exposes everything; it doesn't guess. Common starting points:
-
-| Control          | Baud      | Data | Parity | Stop | Handshake |
-|------------------|----------:|-----:|--------|-----:|-----------|
-| Haas             | 9600      | 7    | Even   | 1    | XON/XOFF  |
-| Fanuc 0/0i       | 4800–9600 | 7    | Even   | 2    | XON/XOFF  |
-| Mazak (Mazatrol) | 4800      | 8    | None   | 1    | RTS/CTS   |
-| Mitsubishi       | 9600      | 8    | None   | 1    | XON/XOFF  |
-
-Sources at the bottom of this file.
-
-## Stack
-
-| Concern | Choice | Notes |
-|---|---|---|
-| Language | TypeScript (5.9.x stable; 6.0 GA, 7.0 in beta as of May 2026) | Pin to 5.9 — ecosystem is mid-migration to 6.0. |
-| Runtime | Whatever Electron Node ships in the user's VS Code | We don't control this; native modules need to match. |
-| Serial I/O | [`serialport`](https://www.npmjs.com/package/serialport) (13.x) | De-facto Node serial library, all three OSes, flow control included. |
-| `engines.vscode` | `^1.95` (latest `@types/vscode` is 1.110) | Set the floor a few months back so corporate stable channels can install. |
-| Bundler | esbuild | What the VS Code team recommends. See native-module caveat below. |
-| Scaffold | `yo code` | Canonical extension layout. |
-| Packaging | `@vscode/vsce` | Builds the `.vsix`, publishes to Marketplace. |
-| Tests | `@vscode/test-electron` + Mocha; `@serialport/binding-mock` for unit tests without hardware | Standard. |
-
-> Don't trust those version numbers blindly — `npm view <pkg> version` before pinning. The TODO has the checklist.
-
-### The native-module thing
-
-`serialport` ships a native binding (`.node`). That means:
-
-1. **esbuild won't bundle it.** Mark `serialport` and `@serialport/bindings-cpp` as `external` in the esbuild config and ship `node_modules/serialport/**` inside the `.vsix`. Make sure `.vscodeignore` doesn't exclude it.
-2. **Electron Node ABI ≠ npm Node ABI.** `serialport` 12+ ships Electron prebuilds, so this usually Just Works. When it doesn't, the user sees a `NODE_MODULE_VERSION` error and needs an `electron-rebuild`-style step.
-
-Both pitfalls are documented in `~/.claude/projects/.../memory/vscode_native_modules.md` so future-me doesn't re-learn them.
-
-## Project layout
+Tapeworm is built as a unified TypeScript `pnpm` monorepo orchestrating the web frontend, background transfer agent, and shared packages:
 
 ```
 tapeworm/
-├── README.md             # this file
-├── PLATFORM.md           # internal architecture sketch (open-core, Hub integration)
-├── TODO.md               # build plan, phased
-├── CONTRIBUTING.md       # how to contribute, licensing intent, CLA
-├── core/                 # tapeworm-core — Rust serial logic crate
-├── mcp-server/           # tapeworm-mcp — MCP server for AI clients
-└── (planned, Phase 1+)
-    ├── package.json      # extension manifest
-    ├── esbuild.js
-    └── src/              # extension code (extension.ts, commands/, ui/, serial/)
+├── apps/
+│   ├── web/               # React + Vite cockpit dashboard (glassmorphic dark UI)
+│   └── agent/             # Transfer agent (subscribes to Supabase Realtime, rewrites O-nums)
+├── packages/
+│   ├── shared/            # Common domain model types (@tapeworm/shared)
+│   └── mcp-server/        # Model Context Protocol (MCP) server for AI clients
+├── core/                  # tapeworm-core — Rust crate for direct serial RS-232 I/O
+├── supabase/              # Local Supabase configuration, seed data, and schema migrations
+└── pnpm-workspace.yaml    # Monorepo workspaces definition
 ```
 
-## Configuration (planned)
+---
 
-Contributed via `contributes.configuration`:
+## Technical Features
 
-- `tapeworm.port` — `"COM3"`, `"/dev/tty.usbserial-A1"`, etc.
-- `tapeworm.baudRate` — 300 / 600 / 1200 / 2400 / 4800 / 9600 / 19200 / 38400 / 57600 / 115200
-- `tapeworm.dataBits` — 5 | 6 | 7 | 8
-- `tapeworm.parity` — `none` | `even` | `odd` | `mark` | `space`
-- `tapeworm.stopBits` — 1 | 2
-- `tapeworm.flowControl` — `none` | `xonxoff` | `rtscts`
-- `tapeworm.endOfLine` — `crlf` | `lf` | `cr`
-- `tapeworm.startCharacter` / `endCharacter` — usually `%`
-- `tapeworm.nullPadding` — leading nulls for paper-tape-era controls
-- `tapeworm.profiles` — array of named overrides
+### 1. Database-Native CNC Management (NC-Base)
+Tapeworm uses a relational PostgreSQL schema (managed locally via Supabase) to keep track of:
+- **Machines**: Location, control families (Fanuc, Mitsubishi, Haas, Brother), transfer modes (RS-232, Net Share, USB gadget), and connection profiles.
+- **Programs & Revisions**: Fully versioned program history. Tracks approvals (`Draft` ➔ `Approved` ➔ `In Production`), file sizes, SHA-256 hashes, and tool list documents.
+- **Dependency Graph**: Directed relationships between programs (e.g. parent program calling child subprograms).
+- **Assignments (O-Number Namespaces)**: Maps logical part numbers to machine-specific `O-numbers` (1–9999). Assigned once, permanent, and unique within each machine's namespace.
+- **Audit Logs**: Immutable transfer logs recording timestamps, users, bytes sent, and rewritten O-number maps.
 
-## Commands (planned)
+### 2. G-Code Parser & Dynamic O-Number Rewriter
+CNCs demand specific program numbers in their memory namespace, but developers prefer human-readable filenames (e.g. `grace-part123.cnc`). Tapeworm bridges this gap at the moment of transfer:
+- **Ingest Parsing**: Analyzes uploaded G-code files to extract defined headers (e.g. `O1001`), Citizen Swiss lathe multi-channel layout (`$1` main, `$2` sub, `$0` barfeed parameters), and external subprogram calls (`M98 P2005` or `G65 P1002`). Ignores local label sequence jumps (`M98 H100`) and highlights machine-resident macros (e.g. `P8000`).
+- **Dynamic Swapping**: When a transfer is queued, the system gathers all subprogram dependencies, assigns free O-numbers on the target machine namespace, and rewrites program headers and `M98/G65` call sites atomically before streaming.
+- **Reverse Mapping**: Program uploads or edits coming back from the machine tool are matched against the transfer's O-number mapping to update the correct versioned program in the library.
 
-- `Tapeworm: Send Active File`
-- `Tapeworm: Receive Program`
-- `Tapeworm: List Serial Ports`
-- `Tapeworm: Pick Profile`
-- `Tapeworm: Show Transmission Log`
+---
 
-## Building (will fill in once scaffolded)
+## Getting Started
 
+### Prerequisites
+- [Node.js](https://nodejs.org/) v20 or higher
+- [pnpm](https://pnpm.io/) v9 or higher
+- [Docker](https://www.docker.com/) (for running Supabase and local services)
+
+### Installation
+Install workspace dependencies and compile the packages:
 ```bash
-npm install
-npm run watch       # auto-rebuild
-# F5 in VS Code → Extension Development Host
-npm run package     # builds the .vsix
+# Install dependencies
+pnpm install
+
+# Approve compilation of native dependencies (esbuild, serialport)
+pnpm approve-builds
+
+# Compile all workspaces (shared package, agent, mcp, web)
+pnpm build
 ```
 
-## Notes & caveats
+### Running Local Development
+1. **Initialize Supabase**:
+   Start your local Supabase services:
+   ```bash
+   npx supabase start
+   ```
+2. **Apply Migrations and Seed Data**:
+   Apply the database schema and seed the 44 Grace Engineering machines:
+   ```bash
+   npx supabase db reset
+   ```
+3. **Start Development Servers**:
+   Run the Vite frontend and transfer agent concurrently using Turborepo:
+   ```bash
+   pnpm dev
+   ```
+   Open your browser and navigate to `http://localhost:3000`.
 
-- **Native module.** `serialport` ships a native binding. We mark it `external` to esbuild and bundle it unmodified inside the `.vsix`. If you see a `NODE_MODULE_VERSION` mismatch on activation, your VS Code's Electron Node ABI doesn't match the prebuilt — rebuild the bindings against your installed VS Code. (`serialport` 12+ ships Electron prebuilds, so this is rare in practice.)
-- **APS subscription required for Hub features.** The Phase 10 Autodesk integrations (Manufacturing Data Model GraphQL, Fusion Automation API, etc.) hit Autodesk Platform Services. As of May 2026, APS introduced paid tiers for several APIs; included usage now ships with qualifying Autodesk subscriptions, and a free tier remains for experimentation. The core RS-232 transfer (Phases 1–8) does **not** depend on APS — Tapeworm works fully offline against a serial cable. Hub sync is opt-in.
-- **The shop floor is not the programming desk.** Often the PC with the serial cable isn't the same one a programmer edits on. We support both: full extension on the programming desk; a smaller CLI / companion mode for the floor.
+---
 
-## References
+## Local Sandbox Simulation Mode
 
-**RS-232 / serial:**
-- [serialport on npm](https://www.npmjs.com/package/serialport) · [serialport.io docs](https://serialport.io/)
-- [machinetoolhelp: per-control RS-232 settings](https://www.machinetoolhelp.com/Applications/RS232Communications.html)
-- [Fanuc 0i configuration (factorywiz KB)](https://kb.factorywiz.com/portal/en/kb/articles/fanuc-0i-configuration-document)
+If you are developing without physical serial hardware (Moxa NPort servers) or a live Supabase database:
+- **Sandbox Mode Toggle**: Click the **Mode** pill in the top header of the web dashboard to switch to `Local Sandbox`.
+- **Mock Ingestion**: Click **Ingest Program** and paste sample G-code containing channel delimiters (`$1`, `$2`) or subroutine calls. The UI will instantly display the auto-parsed CNC metadata.
+- **Simulated Queue**: Click **Send** to queue a transfer. The right-hand panel will display the O-number substitution maps and animate the status transition (`queued` ➔ `sending` ➔ `complete`) with real-time logs.
 
-**VS Code extensions:**
-- [VS Code Extension API](https://code.visualstudio.com/api) · [Bundling Extensions](https://code.visualstudio.com/api/working-with-extensions/bundling-extension) · [Manifest reference](https://code.visualstudio.com/api/references/extension-manifest)
+---
 
-**Autodesk Platform Services (Phase 10 territory):**
-- [Fusion Automation API](https://aps.autodesk.com/apis-and-services/fusion-automation-api) — GA, ~7000 endpoints, hub I/O, NC programs, manufacturing setups
-- [Manufacturing Data Model API (GraphQL)](https://aps.autodesk.com/manufacturing-data-model-api) · [About GraphQL](https://aps.autodesk.com/en/docs/mfgdataapi/v1/developers_guide/about-graphql)
-- [APS MCP server (Node.js, official)](https://github.com/autodesk-platform-services/aps-mcp-server-nodejs) · [DevCon 2026 MCP workshop](https://autodesk-platform-services.github.io/mcp-devcon2026/)
-- [Bringing Fusion onto Claude (APS blog)](https://aps.autodesk.com/blog/bringing-fusion-claude-creative-work)
-- [Autodesk Fusion Post Processor Utility (VS Code)](https://marketplace.visualstudio.com/items?itemName=Autodesk.hsm-post-processor) · [source](https://github.com/Autodesk/cam-posteditor)
+## Contributing
+Please see `CONTRIBUTING.md` for our licensing intentions, CLA details, and code contribution guidelines.
 
 ## License
-
-MIT (planned). See [LICENSE](LICENSE) once added.
+MIT (planned). See `LICENSE` once added.
