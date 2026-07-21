@@ -104,7 +104,7 @@ If you are developing without physical serial hardware (Moxa NPort servers) or a
 ---
 
 ## Contributing
-Please see `CONTRIBUTING.md` for our licensing intentions, CLA details, and code contribution guidelines.
+Contributions are welcome via issues and pull requests. Branch from `main` and keep each pull request focused. The project is MIT licensed (see [`LICENSE`](LICENSE)); by contributing you agree your changes are released under that license. There is no CLA. (An older, pre-pivot contributor guide is kept for reference in [`archive/CONTRIBUTING.md`](archive/CONTRIBUTING.md), but it predates the current architecture and license and is not authoritative.)
 
 ## License
-MIT (planned). See `LICENSE` once added.
+MIT. See [`LICENSE`](LICENSE).
