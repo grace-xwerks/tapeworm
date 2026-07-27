@@ -1,9 +1,15 @@
 version: '3.8'
 
 # Tapeworm application services.
-# Supabase is managed separately via `supabase start` (dev) or
-# the official self-hosted compose at supabase/docker/docker-compose.yml (prod).
-# Both approaches expose Supabase on the tapeworm_floor network below.
+#
+# Supabase is managed separately: `supabase start` for local CLI dev (Kong on
+# 54321, see supabase/config.toml), or the upstream self-hosted compose for the
+# node (Kong on 8000, matching .env.example). That upstream compose is NOT
+# vendored here — clone it to /opt/supabase on the host.
+#
+# Neither service below talks to Supabase over tapeworm_floor: `web` is a static
+# nginx bundle the *browser* calls directly, and `agent` uses host networking.
+# Phase 1 deploys web only — `docker compose up -d web`.
 
 networks:
   tapeworm_floor:
@@ -12,16 +18,17 @@ networks:
       config:
         - subnet: 172.28.0.0/16   # internal Docker network — not the shop floor LAN
 
-volumes:
-  tapeworm_web_build:
-
 services:
 
   # ── Transfer agent ─────────────────────────────────────────────────────────
+  # Not part of the Phase 1 deployment — the wire layer is unimplemented.
+  # Start explicitly with `docker compose up agent` once Phase 2 lands.
   agent:
     build:
-      context: ./apps/agent
-      dockerfile: Dockerfile
+      # Context is the repo root: the Dockerfile pulls in pnpm-workspace.yaml,
+      # turbo.json and packages/shared, all of which live above apps/agent.
+      context: .
+      dockerfile: apps/agent/Dockerfile
     container_name: tapeworm-agent
     restart: unless-stopped
     network_mode: host          # must reach Moxa NPort units on shop floor LAN directly
@@ -46,16 +53,21 @@ services:
   # ── Web app (served by nginx) ───────────────────────────────────────────────
   web:
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
+      # Baked into the bundle at build time, not read at runtime — this must be
+      # the URL the *browser* resolves (e.g. http://192.168.100.10:8000), never
+      # localhost. Changing it requires rebuilding the image.
       args:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
     container_name: tapeworm-web
     restart: unless-stopped
     ports:
+      # 80 only. The image is stock nginx:alpine with no TLS config or certs;
+      # publishing 443 would just be a closed port. Add termination with the
+      # VLAN/OPNsense pass.
       - "80:80"
-      - "443:443"
     networks:
       - tapeworm_floor
     logging:

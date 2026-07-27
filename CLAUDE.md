@@ -20,14 +20,16 @@ units). Turborepo + pnpm workspace monorepo, plus one standalone Rust crate.
 | `core/tapeworm-core` | Wire-protocol types (ports, framing, machine profiles) | Rust, own Cargo workspace — **not** a pnpm member |
 | `packages/mcp-server` | MCP server exposing transfer tools | Node + TS, `@modelcontextprotocol/sdk` |
 | `packages/shared` | `@tapeworm/shared` — domain types, consumed via `workspace:*` | TS |
-| `supabase/` | Schema (`migrations/`) + seed (44 real Grace Engineering machines) | — |
+| `supabase/` | Schema (`migrations/`) + seed (41 Grace Engineering machines) | — |
 | `archive/` | **Superseded** pre-pivot vision docs (VS Code extension, Tauri, GraphQL gateway). Not current architecture — don't treat as a spec. | — |
 
 ## Hard rules
 
 - **The wire-transfer layer doesn't function anywhere yet.** `apps/agent`
-  fakes transfers with a `setTimeout`; `core/tapeworm-core`'s
-  `send_program`/`receive_program` are `unimplemented!()`; every
+  fakes transfers with a `setTimeout`; `core/tapeworm-core`'s framing and
+  byte-pump logic is real and unit-tested, but the private `open_port`
+  (`lib.rs:400`) is `unimplemented!()`, so `send_program`/`receive_program`
+  panic the moment they're called; every
   `packages/mcp-server` tool returns a canned `"[stub] ..."` string. None of
   the three import `serialport`/socket APIs. Don't describe or build on this
   as if it works — it's schema/UI/plumbing around a feature that isn't built.
@@ -41,24 +43,34 @@ units). Turborepo + pnpm workspace monorepo, plus one standalone Rust crate.
   Supabase runs via `npx supabase start` separately. The compose file's
   `agent` service uses `network_mode: host` specifically to reach Moxa NPort
   units on the physical shop LAN — don't "fix" that thinking it's a mistake.
-- **Real business data lives in this repo**: `supabase/seed.sql` and
-  `machine_inventory.xlsx` contain actual Grace Engineering machine serials
-  and shop-floor LAN IPs (also hardcoded as "mock data" in
-  `apps/web/src/App.tsx`). Treat it as real, not sample data — don't invent
-  replacement values or assume it's fabricated.
-- **Two docs are stale, don't trust them at face value**: root `README.md`
-  links a `CONTRIBUTING.md` that no longer exists at root (moved to
-  `archive/`) and says "License: MIT (planned)" while `archive/PLATFORM.md`
-  says Apache-2.0+CLA — no `LICENSE` file exists either way, so it's actually
-  undecided. `core/README.md` calls itself "the wire layer behind the
+- **Real serials, fabricated network data.** `supabase/seed.sql` and
+  `machine_inventory.xlsx` contain actual Grace Engineering machine numbers,
+  models and serials — treat those as real, don't invent replacements.
+  The `connection_config` IPs and ports in `seed.sql` are **not** real: host is
+  always `192.168.10.(machine_number - 700)` and port `4000 + (machine_number
+  mod 10)`, and the Brother rows use `\\192.168.10.879\programs` / `.880`,
+  which aren't valid IPv4. `machine_inventory.xlsx` is a *lubrication* sheet
+  (coolant, way lube, spindle lube) and contains no addresses at all. The
+  placeholders also contradict `.env.example` and
+  `tapeworm_reference_card.html`, which describe two NPort chassis
+  (`192.168.10.10` lathe, `.11` mill, ports 4001–4016) rather than 27 per-machine
+  IPs. Real addressing has to be gathered by walking the floor — don't wire
+  anything against these values.
+- **Stale docs, don't trust them at face value**: licensing is settled — a root
+  `LICENSE` file exists and is MIT, so ignore `archive/PLATFORM.md`'s
+  Apache-2.0+CLA. `core/README.md` calls itself "the wire layer behind the
   Tapeworm VS Code extension" — that extension doesn't exist in this repo.
+  `tapeworm_architecture.png` shows a GMKtec G3 Pro running Ubuntu 24.04 +
+  bare Docker; the real host is an M5 Ultra NUC (Ryzen 7 7730U, 16GB, 512GB
+  NVMe) running Proxmox VE 9.2. The Notion "Network & Infrastructure
+  Architecture" page supersedes the diagram.
 
 ## Quick commands
 
 ```bash
 pnpm install && pnpm approve-builds && pnpm build
 npx supabase start
-npx supabase db reset      # seeds 44 machines from supabase/seed.sql
+npx supabase db reset      # seeds 41 machines from supabase/seed.sql
 pnpm dev                   # http://localhost:3000
 
 # Rust core

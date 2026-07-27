@@ -70,7 +70,7 @@ pnpm build
    npx supabase start
    ```
 2. **Apply Migrations and Seed Data**:
-   Apply the database schema and seed the 44 Grace Engineering machines:
+   Apply the database schema and seed the 41 Grace Engineering machines:
    ```bash
    npx supabase db reset
    ```
