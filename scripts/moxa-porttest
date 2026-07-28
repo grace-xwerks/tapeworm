@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""
+Moxa NPort port tester.
+
+Two modes, and the difference matters:
+
+  --tcp        (default) Opens a TCP socket to each data port. Proves the NETWORK
+               path to the gateway. Succeeds whether or not anything is plugged
+               into the serial side, so a full pass here means very little about
+               the wiring.
+
+  --loopback   Writes a pattern and expects it back. Requires a loopback plug on
+               the serial port (short pins 2-3 on DB25 / TX-RX on RJ45). This is
+               the one that actually proves the UART, the connector and the cable.
+
+Usage:
+  moxa-porttest                      # TCP check, both gateways
+  moxa-porttest --loopback           # loopback, both gateways
+  moxa-porttest --loopback 192.168.10.10 --ports 1-4
+"""
+import argparse, socket, sys, time
+
+GATEWAYS = {"192.168.10.10": "lathe (5610-16)", "192.168.10.11": "mill  (5650-16)"}
+BASE = 4001
+
+
+def tcp_check(host, port, timeout=3.0):
+    try:
+        s = socket.create_connection((host, port), timeout=timeout)
+        s.close()
+        return True, "socket open"
+    except Exception as e:
+        return False, type(e).__name__
+
+
+def loopback_check(host, port, timeout=4.0):
+    """Write a pattern, expect it echoed by the loopback plug."""
+    probe = f"TAPEWORM-LOOPBACK-{port}\r\n".encode("ascii")
+    try:
+        s = socket.create_connection((host, port), timeout=timeout)
+        s.settimeout(timeout)
+        # Drain anything stale in the Moxa's buffer first.
+        s.setblocking(False)
+        try:
+            while s.recv(4096):
+                pass
+        except Exception:
+            pass
+        s.setblocking(True)
+        s.settimeout(timeout)
+
+        s.sendall(probe)
+        deadline = time.time() + timeout
+        buf = b""
+        while time.time() < deadline and probe.rstrip() not in buf:
+            try:
+                chunk = s.recv(4096)
+            except socket.timeout:
+                break
+            if not chunk:
+                break
+            buf += chunk
+        s.close()
+
+        if probe.rstrip() in buf:
+            return True, "echo OK"
+        if buf:
+            return False, f"partial ({len(buf)}B) - check baud/parity"
+        return False, "no echo - plug absent or port misconfigured"
+    except Exception as e:
+        return False, type(e).__name__
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("host", nargs="?", help="single gateway; default both")
+    ap.add_argument("--loopback", action="store_true")
+    ap.add_argument("--ports", default="1-16", help="e.g. 1-4 or 1,3,7")
+    a = ap.parse_args()
+
+    if "-" in a.ports:
+        lo, hi = a.ports.split("-"); nums = range(int(lo), int(hi) + 1)
+    else:
+        nums = [int(x) for x in a.ports.split(",")]
+
+    hosts = [a.host] if a.host else list(GATEWAYS)
+    mode = "LOOPBACK" if a.loopback else "TCP"
+    check = loopback_check if a.loopback else tcp_check
+
+    if not a.loopback:
+        print("NOTE: TCP mode proves the network path only. A pass here does NOT")
+        print("      mean a machine is wired. Use --loopback with a plug fitted.\n")
+
+    overall = 0
+    for host in hosts:
+        label = GATEWAYS.get(host, host)
+        print(f"=== {host}  {label}  [{mode}] ===")
+        ok = 0
+        for n in nums:
+            port = BASE + n - 1
+            good, detail = check(host, port)
+            ok += good
+            print(f"  port {n:>2}  :{port}  {'PASS' if good else 'FAIL'}  {detail}")
+        print(f"  --> {ok}/{len(list(nums))} passed\n")
+        overall += ok
+    return 0 if overall else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
