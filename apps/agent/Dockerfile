@@ -1,4 +1,6 @@
-FROM node:20-alpine AS builder
+# node:22 (not 20) — package.json pins packageManager pnpm@11.9.0, and pnpm 11
+# fails on Node 20 with ERR_UNKNOWN_BUILTIN_MODULE.
+FROM node:22-alpine AS builder
 WORKDIR /app
 RUN npm install -g pnpm
 COPY pnpm-workspace.yaml pnpm-lock.yaml* package.json turbo.json ./
@@ -10,7 +12,7 @@ COPY apps/agent ./apps/agent
 RUN pnpm --filter @tapeworm/shared build
 RUN pnpm --filter tapeworm-agent build
 
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 RUN npm install -g pnpm
 COPY pnpm-workspace.yaml package.json ./
