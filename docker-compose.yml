@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Tapeworm application services.
 #
 # Supabase is managed separately: `supabase start` for local CLI dev (Kong on
